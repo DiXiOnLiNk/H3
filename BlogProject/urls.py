@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.urls import path, include
 from django.shortcuts import redirect
+from django.contrib.auth import views as auth_views  # Імпорт для login/logout
 
 # Swagger імпорти
 from rest_framework import permissions
@@ -22,10 +23,11 @@ schema_view = get_schema_view(
 def redirect_to_docs(request):
     return redirect('/swagger/')
 
-# Шляхи
 urlpatterns = [
-    path('', redirect_to_docs),  # головна → swagger
+    path('', redirect_to_docs),
     path('admin/', admin.site.urls),
-    path('api/', include('blog.urls')),  # підключення URL з додатку blog
+    path('api/', include('blog.urls')),
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+    path('accounts/login/', auth_views.LoginView.as_view(), name='login'),
+    path('accounts/logout/', auth_views.LogoutView.as_view(), name='logout'),  # ✅ Додано logout
 ]

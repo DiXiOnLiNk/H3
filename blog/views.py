@@ -1,14 +1,19 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, permissions
 from django.shortcuts import get_object_or_404
-from .models import Post, Comment
-from .serializers import PostSerializer, CommentSerializer
-
+from django.contrib.auth.models import User
+from rest_framework_simplejwt.views import TokenObtainPairView
 from drf_yasg.utils import swagger_auto_schema
+
+from .models import Post, Comment
+from .serializers import PostSerializer, CommentSerializer, RegisterSerializer
+from .permissions import IsAdmin
 
 # --- POST CRUD ---
 class PostListCreate(APIView):
+    permission_classes = [permissions.IsAuthenticated]  # Приклад захисту, можна змінити
+
     @swagger_auto_schema(
         responses={200: PostSerializer(many=True)}
     )
@@ -28,8 +33,9 @@ class PostListCreate(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
 class PostDetail(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
     @swagger_auto_schema(
         responses={200: PostSerializer()}
     )
@@ -58,9 +64,10 @@ class PostDetail(APIView):
         post.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-
 # --- COMMENT CRUD ---
 class CommentListCreate(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
     @swagger_auto_schema(
         responses={200: CommentSerializer(many=True)}
     )
@@ -80,8 +87,9 @@ class CommentListCreate(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
 class CommentDetail(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
     @swagger_auto_schema(
         responses={200: CommentSerializer()}
     )
@@ -109,3 +117,29 @@ class CommentDetail(APIView):
         comment = get_object_or_404(Comment, pk=pk)
         comment.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# --- AUTH VIEWS ---
+
+# Реєстрація
+class RegisterView(APIView):
+    permission_classes = (permissions.AllowAny,)
+
+    @swagger_auto_schema(request_body=RegisterSerializer)
+    def post(self, request):
+        serializer = RegisterSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Користувача створено"}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# Логін через JWT (проксі для simplejwt)
+class CustomTokenObtainPairView(TokenObtainPairView):
+    pass  # можна кастомізувати
+
+# Приклад захищеного вью з IsAdmin
+class AdminOnlyView(APIView):
+    permission_classes = [IsAdmin]
+
+    def get(self, request):
+        return Response({"message": "Привіт, адміністраторе!"})
